@@ -75,6 +75,15 @@ config CGROUP_BFQIO
 	  filesystem interface.  The name of the subsystem will be
 	  bfqio.
 
+config IOSCHED_LIFO
+	tristate "LIFO I/O scheduler"
+	default y
+	---help---
+	  The LIFO I/O scheduler is a minimal scheduler that does basic merging
+	  and sorting. Basically this scheduler dispatches the latests received
+	  I/O requests, requiring minimal assistance from the kernel.
+
+	  Do not use this I/O scheduler if you care of your computer.
 
 config IOSCHED_VR
 	tristate "V(R) I/O scheduler"
@@ -102,6 +111,9 @@ choice
 	config DEFAULT_SIO
 		bool "SIO" if IOSCHED_SIO=y
 
+	config DEFAULT_LIFO
+		bool "LIFO" if IOSCHED_LIFO=y
+
 	config DEFAULT_NOOP
 		bool "No-op"
 
@@ -116,6 +128,7 @@ config DEFAULT_IOSCHED
 	default "cfq" if DEFAULT_CFQ
 	default "bfq" if DEFAULT_BFQ
 	default "sio" if DEFAULT_SIO
+	default "lifo" if DEFAULT_LIFO
 	default "noop" if DEFAULT_NOOP
 	default "vr" if DEFAULT_VR
 
