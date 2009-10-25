@@ -8,6 +8,7 @@
 #include <linux/bio.h>
 #include <linux/module.h>
 #include <linux/init.h>
+#include <linux/version.h>
 
 struct lifo_data {
 	struct list_head queue;
@@ -40,12 +41,14 @@ static void lifo_add_request(struct request_queue *q, struct request *rq)
 	list_add(&rq->queuelist, &ld->queue);
 }
 
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
 static int lifo_queue_empty(struct request_queue *q)
 {
 	struct lifo_data *ld = q->elevator->elevator_data;
 
 	return list_empty(&ld->queue);
 }
+#endif
 
 static struct request *
 lifo_former_request(struct request_queue *q, struct request *rq)
@@ -92,7 +95,9 @@ static struct elevator_type elevator_lifo = {
 		.elevator_merge_req_fn		= lifo_merged_requests,
 		.elevator_dispatch_fn		= lifo_dispatch,
 		.elevator_add_req_fn		= lifo_add_request,
+#if LINUX_VERSION_CODE <= KERNEL_VERSION(2,6,38)
 		.elevator_queue_empty_fn	= lifo_queue_empty,
+#endif
 		.elevator_former_req_fn		= lifo_former_request,
 		.elevator_latter_req_fn		= lifo_latter_request,
 		.elevator_init_fn		= lifo_init_queue,
