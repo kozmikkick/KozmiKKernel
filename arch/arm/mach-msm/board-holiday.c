@@ -111,6 +111,7 @@
 #include <mach/restart.h>
 #include <mach/cable_detect.h>
 #include <mach/panel_id.h>
+#include <linux/msm_tsens.h>
 
 #include "board-holiday.h"
 #include "devices.h"
@@ -3286,6 +3287,14 @@ static struct platform_device *early_devices[] __initdata = {
 	&msm_device_dmov_adm1,
 };
 
+static struct tsens_platform_data hol_tsens_pdata  = {
+		.tsens_factor		= 1000,
+		.hw_type		= MSM_8660,
+		.tsens_num_sensor	= 5,
+		.slope 			= 702,
+};
+
+/*
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
@@ -6807,7 +6816,7 @@ static struct platform_device *holiday_devices[] __initdata = {
 	&msm_device_rng,
 #endif
 
-	&msm_tsens_device,
+	//&msm_tsens_device,
 	&msm_rpm_device,
 
 #ifdef CONFIG_BATTERY_MSM8X60
@@ -7009,6 +7018,8 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 			pr_info("Not WhiteColor HOY\n");
 	} else
 		pr_info("Hboot need to update to detect WhiteColor HOY version\n");
+
+	msm_tsens_early_init(&hol_tsens_pdata);
 
 	/*
 	 * Initialize RPM first as other drivers and devices may need
