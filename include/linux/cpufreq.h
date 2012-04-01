@@ -25,10 +25,8 @@
 #define CPUFREQ_NAME_LEN 16
 
 
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
-/* Badass gpu state detection */
-extern bool gpu_busy_state;
-#endif
+/* cmdline_khz variables */
+extern char cmdline_gov;
 
 /*********************************************************************
  *                     CPUFREQ NOTIFIER INTERFACE                    *
