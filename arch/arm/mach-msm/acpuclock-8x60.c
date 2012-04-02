@@ -870,6 +870,50 @@ static struct notifier_block __cpuinitdata acpuclock_cpu_notifier = {
 	.notifier_call = acpuclock_cpu_callback,
 };
 
+int mpdec_max_khz;
+#ifdef CONFIG_MSM_MPDEC
+
+uint32_t acpu_check_khz_value(unsigned long khz)
+{
+	struct clkctl_acpu_speed *f;
+
+	if (khz > mpdec_max_khz)
+		return CONFIG_MSM_CPU_FREQ_MAX;
+
+	if (khz < 192)
+		return CONFIG_MSM_CPU_FREQ_MIN;
+
+	for (f = acpu_freq_tbl; f->acpuclk_khz != 0; f++) {
+		if (khz < 192000) {
+			if (f->acpuclk_khz == (khz*1000))
+				return f->acpuclk_khz;
+			if ((khz*1000) > f->acpuclk_khz) {
+				f++;
+				if ((khz*1000) < f->acpuclk_khz) {
+					f--;
+					return f->acpuclk_khz;
+				}
+				f--;
+			}
+		}
+		if (f->acpuclk_khz == khz) {
+			return 1;
+		}
+		if (khz > f->acpuclk_khz) {
+			f++;
+			if (khz < f->acpuclk_khz) {
+				f--;
+				return f->acpuclk_khz;
+			}
+			f--;
+		}
+	}
+
+	return 0;
+}
+EXPORT_SYMBOL(acpu_check_khz_value);
+#endif
+
 static unsigned int __init select_freq_plan(void)
 {
 	uint32_t pte_efuse, speed_bin, pvs, max_khz;
@@ -883,6 +927,7 @@ static unsigned int __init select_freq_plan(void)
 
 	if (speed_bin == 0x1) {
 		max_khz = 1512000;
+		mpdec_max_khz = max_khz;
 		pvs = (pte_efuse >> 10) & 0x7;
 		if (pvs == 0x7)
 			pvs = (pte_efuse >> 13) & 0x7;
@@ -908,6 +953,7 @@ static unsigned int __init select_freq_plan(void)
 		}
 	} else {
 		max_khz = 1188000;
+		mpdec_max_khz = max_khz;
 		acpu_freq_tbl = acpu_freq_tbl_1188mhz;
 	}
 
