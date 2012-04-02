@@ -126,9 +126,22 @@ __setup("minkhz=", cpufreq_read_minkhz_cmdline);
 
 static int __init cpufreq_read_gov_cmdline(char *gov)
 {
+	int ret;
 	if (gov) {
-		strcpy(cmdline_gov, gov);
-		printk(KERN_INFO "[cmdline_gov]: Governor will be set to '%s'", cmdline_gov);
+		ret = set_cmdline_governor(gov);
+		if (ret == 0) {
+			printk(KERN_INFO "[cmdline_gov]: Governor set to '%s'", gov);
+		} else if (ret == 1) {
+			printk(KERN_INFO "[cmdline_gov]: ERROR! Found malformed input '%s'", gov);
+		} else if (ret == 2) {
+			printk(KERN_INFO "[cmdline_gov]: ERROR! Could not get policy for [CPU0]");
+		} else if (ret == 3) {
+			printk(KERN_INFO "[cmdline_gov]: ERROR! Could not get policy for [CPU1]");
+		} else if (ret == 4) {
+			printk(KERN_INFO "[cmdline_gov]: ERROR! Could not get policy!");
+		} else if (ret == 5) {
+			printk(KERN_INFO "[cmdline_gov]: ERROR! Could not set governor '%s'", gov);
+		}
 	} else {
 		printk(KERN_INFO "[cmdline_gov]: No input found.");
 	}
