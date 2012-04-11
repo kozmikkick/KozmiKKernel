@@ -78,8 +78,7 @@ static int cy8c_reset_baseline(void);
 static DEFINE_MUTEX(cy8c_mutex);
 
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
-bool s2w_switch = true, scr_suspended = false, exec_count = true;
-bool led_exec_count = false, barrier[2] = {false, false};
+bool s2w_switch = true, scr_suspended = false, exec_count = true, barrier[2] = {false, false};
 static struct input_dev * sweep2wake_pwrdev;
 static struct led_classdev * sweep2wake_leddev;
 static DEFINE_MUTEX(pwrlock);
@@ -88,13 +87,13 @@ static DEFINE_MUTEX(pwrlock);
 static int __init cy8c_read_s2w_cmdline(char *s2w)
 {
 	if (strcmp(s2w, "1") == 0) {
-		printk(KERN_INFO "[cmdline_s2w]: Sweep2Wake enabled. | s2w='%s'", s2w);
+		printk(KERN_INFO "[cmdline_s2w]: Sweep2Wake enabled.");
 		s2w_switch = true;
 	} else if (strcmp(s2w, "0") == 0) {
-		printk(KERN_INFO "[cmdline_s2w]: Sweep2Wake disabled. | s2w='%s'", s2w);
+		printk(KERN_INFO "[cmdline_s2w]: Sweep2Wake disabled.");
 		s2w_switch = false;
 	} else {
-		printk(KERN_INFO "[cmdline_s2w]: No valid input found. Sweep2Wake disabled. | s2w='%s'", s2w);
+		printk(KERN_INFO "[cmdline_s2w]: No valid input found. Sweep2Wake disabled.");
 		s2w_switch = false;
 	}
 	return 1;
@@ -979,7 +978,7 @@ static irqreturn_t cy8c_ts_irq_thread(int irq, void *ptr)
 #ifdef CONFIG_TOUCHSCREEN_CYPRESS_SWEEP2WAKE
 				//left->right
 				if ((ts->finger_count == 1) && (scr_suspended == true) && (s2w_switch == true)) {
-					prevx = 30;
+					prevx = 200;
 					nextx = 300;
 					if ((barrier[0] == true) ||
 					   ((finger_data[loop_i][0] > prevx) &&
