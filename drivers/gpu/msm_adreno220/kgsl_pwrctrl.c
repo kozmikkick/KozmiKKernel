@@ -311,6 +311,9 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 {
 	struct kgsl_busy *b = &device->pwrctrl.busy;
 	int elapsed;
+#ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
+	struct kgsl_pwrctrl *pwr_ctrl;
+#endif
 	if (b->start.tv_sec == 0)
 		do_gettimeofday(&(b->start));
 	do_gettimeofday(&(b->stop));
@@ -330,10 +333,14 @@ static void kgsl_pwrctrl_busy_time(struct kgsl_device *device, bool on_time)
 	do_gettimeofday(&(b->start));
 
 #ifdef CONFIG_CPU_FREQ_GOV_BADASS_GPU_CONTROL
-	if (on_time)
+	pwr_ctrl = &device->pwrctrl;
+	if ((device->id == 0) &&
+	    (device->state == KGSL_STATE_ACTIVE) &&
+	    (pwr_ctrl->active_pwrlevel <= 2)) {
 		gpu_busy_state = true;
-	else
+	} else {
 		gpu_busy_state = false;
+	}
 #endif
 }
 
