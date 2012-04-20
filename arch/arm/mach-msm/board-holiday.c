@@ -6390,7 +6390,7 @@ static void __init msm8x60_init_mmc(void)
 	 * vote can be in terms of mA (min. 1 mA).
 	 * So let's vote for 2 mA during sleep.
 	 */
-	sdcc_vreg_data[2].vddp_data->lpm_uA = 2000;
+	sdcc_vreg_data[2].vddp_data->lpm_uA = 10000;
 	/* Max. Active current required is 16 mA */
 	sdcc_vreg_data[2].vddp_data->hpm_uA = 16000;
 	msm_add_sdcc(3, &msm8x60_sdc3_data);
