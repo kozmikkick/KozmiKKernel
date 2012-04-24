@@ -987,7 +987,7 @@ static irqreturn_t cy8c_ts_irq_thread(int irq, void *ptr)
 					    (finger_data[loop_i][1] > 950))) {
 						if (led_exec_count) {
 							pm8058_drvx_led_brightness_set(sweep2wake_leddev, 255);
-							printk(KERN_INFO "[cmdline_s2w]: activated button_backlight");
+							printk(KERN_INFO "[sweep2wake]: activated button_backlight");
 							led_exec_count = false;
 						}
 						prevx = 300;
@@ -1082,7 +1082,7 @@ static irqreturn_t cy8c_ts_irq_thread(int irq, void *ptr)
 		if ((((ts->finger_count > 0)?1:0) == 0) && (s2w_switch == true)) {
 			if ((scr_suspended == true) && (led_exec_count == false)) {
 				pm8058_drvx_led_brightness_set(sweep2wake_leddev, 0);
-				printk(KERN_INFO "[cmdline_s2w]: deactivated button_backlight");
+				printk(KERN_INFO "[sweep2wake]: deactivated button_backlight");
 			}
 			exec_count = true;
 			led_exec_count = true;
