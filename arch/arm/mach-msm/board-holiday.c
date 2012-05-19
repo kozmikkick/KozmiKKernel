@@ -149,20 +149,6 @@
 #define UI_INT2_N 34
 #define UI_INT3_N 14
 
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-int set_two_phase_freq_badass(int cpufreq);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-int set_three_phase_freq_badass(int cpufreq);
-#endif
-
-#ifdef CONFIG_CMDLINE_OPTIONS
-	/* setters for cmdline_gpu */
-	int set_kgsl_3d0_freq(unsigned int freq0, unsigned int freq1);
-	int set_kgsl_2d0_freq(unsigned int freq);
-	int set_kgsl_2d1_freq(unsigned int freq);
-#endif
-
 /* Macros assume PMIC GPIOs start at 0 */
 #define PM8058_GPIO_BASE			NR_MSM_GPIOS
 #define PM8058_GPIO_PM_TO_SYS(pm_gpio)		(pm_gpio + PM8058_GPIO_BASE)
@@ -7101,20 +7087,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	set_two_phase_freq(1134000);
 #endif
 
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-	set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
-#endif
-
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE
-	set_two_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_2_PHASE_FREQ);
-#endif
-#ifdef CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE
-	set_three_phase_freq_badass(CONFIG_CPU_FREQ_GOV_BADASS_3_PHASE_FREQ);
-#endif
-
 	msm8x60_init_tlmm();
 	msm8x60_init_gpiomux(board_data->gpiomux_cfgs);
 	msm8x60_init_uart12dm();
@@ -7132,13 +7104,6 @@ static void __init msm8x60_init(struct msm_board_data *board_data)
 	platform_add_devices(holiday_devices, ARRAY_SIZE(holiday_devices));
 
 	platform_add_devices(asoc_devices, ARRAY_SIZE(asoc_devices));
-
-#ifdef CONFIG_CMDLINE_OPTIONS
-	/* setters for cmdline_gpu */
-	set_kgsl_3d0_freq(cmdline_3dgpu[0], cmdline_3dgpu[1]);
-	set_kgsl_2d0_freq(cmdline_2dgpu);
-	set_kgsl_2d1_freq(cmdline_2dgpu);
-#endif
 
 #if defined(CONFIG_SPI_QUP) || defined(CONFIG_SPI_QUP_MODULE)
 	platform_device_register(&msm_gsbi1_qup_spi_device);
