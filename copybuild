@@ -1,0 +1,10 @@
+#!/bin/bash
+
+cp arch/arm/mach-msm/msm-buspm-dev.ko compiled/modules/msm-buspm-dev.ko
+cp drivers/net/tun.ko compiled/modules/tun.ko
+cp drivers/net/wireless/bcmdhd/bcmdhd.ko compiled/modules/bcmdhd.ko
+cp drivers/net/wireless/libra/librasdioif.ko compiled/modules/librasdioif.ko
+cp drivers/spi/spidev.ko compiled/modules/spidev.ko
+cp fs/cifs/cifs.ko compiled/modules/cifs.ko
+
+cp arch/arm/boot/zImage compiled/zImage
