@@ -69,6 +69,12 @@ arch/arm/boot/compressed/piggy.xzkern
 arch/arm/boot/compressed/vmlinux
 arch/arm/mach-msm/smd_rpc_sym.c
 
+
+#
+# Generated build output
+#
+compiled/zImage
+
 # stgit generated dirs
 patches-*
 
