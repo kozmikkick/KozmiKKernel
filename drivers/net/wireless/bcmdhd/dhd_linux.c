@@ -1276,6 +1276,9 @@ dhd_op_if(dhd_if_t *ifp)
 				wl_cfg80211_notify_ifdel(ifp->net);
 			}
 #endif
+			/*HTC_CSP_START*/
+			msleep(300);
+			/*HTC_CSP_END*/
 			netif_stop_queue(ifp->net);
 			unregister_netdev(ifp->net);
 			ret = DHD_DEL_IF;	/* Make sure the free_netdev() is called */
@@ -1682,20 +1685,24 @@ dhd_txflowcontrol(dhd_pub_t *dhdp, int ifidx, bool state)
 		for (i = 0; i < DHD_MAX_IFS; i++) {
 			if (dhd->iflist[i]) {
 				net = dhd->iflist[i]->net;
-				if (state == ON)
-					netif_stop_queue(net);
-				else
-					netif_wake_queue(net);
+				if (net) {
+					if (state == ON)
+						netif_stop_queue(net);
+					else
+						netif_wake_queue(net);
+				}
 			}
 		}
 	}
 	else {
 		if (dhd->iflist[ifidx]) {
 			net = dhd->iflist[ifidx]->net;
-			if (state == ON)
-				netif_stop_queue(net);
-			else
-				netif_wake_queue(net);
+			if (net) {
+				if (state == ON)
+					netif_stop_queue(net);
+				else
+					netif_wake_queue(net);
+			}
 		}
 	}
 }
