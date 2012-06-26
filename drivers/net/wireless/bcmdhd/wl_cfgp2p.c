@@ -35,7 +35,6 @@
 #include <linux/string.h>
 #include <linux/timer.h>
 #include <linux/if_arp.h>
-#include <linux/random.h>
 #include <asm/uaccess.h>
 
 #include <bcmutils.h>
@@ -121,9 +120,9 @@ void
 wl_cfgp2p_deinit_priv(struct wl_priv *wl)
 {
 	CFGP2P_DBG(("In\n"));
+
 	if (wl->p2p) {
 		kfree(wl->p2p);
-		wl->p2p = NULL;
 	}
 	wl->p2p_supported = 0;
 }
@@ -524,13 +523,10 @@ wl_cfgp2p_escan(struct wl_priv *wl, struct net_device *dev, u16 active,
 	wl_escan_params_t *eparams;
 	wlc_ssid_t ssid;
 	/* Scan parameters */
-#define P2PAPI_SCAN_NPROBES 1
-#define P2PAPI_SCAN_DWELL_TIME_MS 80
+#define P2PAPI_SCAN_NPROBES 2
+#define P2PAPI_SCAN_DWELL_TIME_MS 50
 #define P2PAPI_SCAN_SOCIAL_DWELL_TIME_MS 40
-#define P2PAPI_SCAN_HOME_TIME_MS 60
-#define P2PAPI_SCAN_NPROBS_TIME_MS 25
-#define P2PAPI_SCAN_AF_SEARCH_DWELL_TIME_MS (P2PAPI_SCAN_NPROBS_TIME_MS + 5)
-
+#define P2PAPI_SCAN_HOME_TIME_MS 10
 	struct net_device *pri_dev = wl_to_p2p_bss_ndev(wl, P2PAPI_BSSCFG_PRIMARY);
 	wl_set_p2p_status(wl, SCANNING);
 	/* Allocate scan params which need space for 3 channels and 0 ssids */
@@ -590,10 +586,8 @@ wl_cfgp2p_escan(struct wl_priv *wl, struct net_device *dev, u16 active,
 	eparams->params.home_time = htod32(P2PAPI_SCAN_HOME_TIME_MS);
 	if (wl_get_drv_status_all(wl, CONNECTED))
 		eparams->params.active_time = htod32(-1);
-	else if (num_chans == SOCIAL_CHAN_CNT)
+	else if (num_chans == 3)
 		eparams->params.active_time = htod32(P2PAPI_SCAN_SOCIAL_DWELL_TIME_MS);
-	else if (num_chans == AF_PEER_SEARCH_CNT)
-		eparams->params.active_time = htod32(P2PAPI_SCAN_AF_SEARCH_DWELL_TIME_MS);
 	else
 		eparams->params.active_time = htod32(P2PAPI_SCAN_DWELL_TIME_MS);
 	eparams->params.passive_time = htod32(-1);
@@ -639,12 +633,10 @@ wl_cfgp2p_act_frm_search(struct wl_priv *wl, struct net_device *ndev,
 	CFGP2P_ERR((" Enter\n"));
 	if (bssidx == P2PAPI_BSSCFG_PRIMARY)
 		bssidx =  wl_to_p2p_bss_bssidx(wl, P2PAPI_BSSCFG_DEVICE);
-
 	if (channel)
-		chan_cnt = AF_PEER_SEARCH_CNT;
+		chan_cnt = 1;
 	else
 		chan_cnt = SOCIAL_CHAN_CNT;
-
 	default_chan_list = kzalloc(chan_cnt * sizeof(*default_chan_list), GFP_KERNEL);
 	if (default_chan_list == NULL) {
 		CFGP2P_ERR(("channel list allocation failed \n"));
@@ -652,17 +644,13 @@ wl_cfgp2p_act_frm_search(struct wl_priv *wl, struct net_device *ndev,
 		goto exit;
 	}
 	if (channel) {
-		u32 i;
-		/* insert same channel to the chan_list */
-		for (i = 0; i < chan_cnt; i++) {
-			default_chan_list[i] = channel;
-		}
+		default_chan_list[0] = channel;
 	} else {
 		default_chan_list[0] = SOCIAL_CHAN_1;
 		default_chan_list[1] = SOCIAL_CHAN_2;
 		default_chan_list[2] = SOCIAL_CHAN_3;
 	}
-	ret = wl_cfgp2p_escan(wl, ndev, true, chan_cnt,
+	ret = wl_cfgp2p_escan(wl, ndev, true, SOCIAL_CHAN_CNT,
 		default_chan_list, WL_P2P_DISC_ST_SEARCH,
 		WL_SCAN_ACTION_START, bssidx);
 	kfree(default_chan_list);

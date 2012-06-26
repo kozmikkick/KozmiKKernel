@@ -36,6 +36,11 @@
 #include <dngl_stats.h>
 #include <dhd.h>
 #include <bcmsdbus.h>
+/* HTC_CSP_START */
+#ifdef CONFIG_PERFLOCK
+#include <mach/perflock.h>
+#endif
+/* HTC_CSP_END */
 #ifdef WL_CFG80211
 #include <wl_cfg80211.h>
 #endif
@@ -196,6 +201,70 @@ static int wl_android_get_link_speed(struct net_device *net, char *command, int 
 	return bytes_written;
 }
 
+/* HTC_CSP_START */
+/* traffic indicate parameters */
+/* framework will obtain RSSI every 3000 ms*/
+/* The throughput mapping to packet count is as below:
+ *  2Mbps: ~280 packets / second
+ *  4Mbps: ~540 packets / second
+ *  6Mbps: ~800 packets / second
+ *  8Mbps: ~1200 packets / second
+ * 12Mbps: ~1500 packets / second
+ * 14Mbps: ~1800 packets / second
+ * 16Mbps: ~2000 packets / second
+ * 18Mbps: ~2300 packets / second
+ * 20Mbps: ~2600 packets / second
+ */
+#define TRAFFIC_HIGH_WATER_MARK	        2300*(3000/1000)
+#define TRAFFIC_LOW_WATER_MARK          256*(3000/1000)
+typedef enum traffic_ind {
+	TRAFFIC_STATS_HIGH = 0,
+	TRAFFIC_STATS_NORMAL,
+} traffic_ind_t;
+
+
+static int traffic_stats_flag = TRAFFIC_STATS_NORMAL;
+static unsigned long current_traffic_count = 0;
+static unsigned long last_traffic_count = 0;
+extern struct perf_lock wlan_perf_lock;
+
+static void wl_android_traffic_monitor(struct net_device *dev)
+{
+	unsigned long rx_packets_count = 0;
+	unsigned long tx_packets_count = 0;
+	unsigned long traffic_diff = 0;
+
+	/*for Traffic High/Low indication */
+	dhd_get_txrx_stats(dev, &rx_packets_count, &tx_packets_count);
+	current_traffic_count = rx_packets_count + tx_packets_count;
+
+	if (current_traffic_count >= last_traffic_count) {
+		traffic_diff = current_traffic_count - last_traffic_count;
+		if (traffic_stats_flag == TRAFFIC_STATS_NORMAL) {
+			if (traffic_diff > TRAFFIC_HIGH_WATER_MARK) {
+				traffic_stats_flag = TRAFFIC_STATS_HIGH;
+#ifdef CONFIG_PERFLOCK
+				if (!is_perf_lock_active(&wlan_perf_lock))
+					perf_lock(&wlan_perf_lock);
+#endif
+				printf("lock cpu here, traffic-count=%ld\n", traffic_diff / 3);
+			}
+		} else {
+			if (traffic_diff < TRAFFIC_LOW_WATER_MARK) {
+				traffic_stats_flag = TRAFFIC_STATS_NORMAL;
+#ifdef CONFIG_PERFLOCK
+				if (is_perf_lock_active(&wlan_perf_lock))
+					perf_unlock(&wlan_perf_lock);
+#endif
+				printf("unlock cpu here, traffic-count=%ld\n", traffic_diff / 3);
+			}
+		}
+	}
+	last_traffic_count = current_traffic_count;
+	/*End of Traffic High/Low indication */
+}
+/* HTC_CSP_END */
+
 static int wl_android_get_rssi(struct net_device *net, char *command, int total_len)
 {
 	wlc_ssid_t ssid = {0};
@@ -218,6 +287,9 @@ static int wl_android_get_rssi(struct net_device *net, char *command, int total_
 	}
 	bytes_written += snprintf(&command[bytes_written], total_len, " rssi %d", rssi);
 	DHD_INFO(("%s: command result is %s (%d)\n", __FUNCTION__, command, bytes_written));
+/* HTC_CSP_START */
+	wl_android_traffic_monitor(net);
+/* HTC_CSP_END */
 	return bytes_written;
 }
 
@@ -635,7 +707,7 @@ static int wl_android_set_ap_mac_list(struct net_device *dev, void *buf)
 				android_ap_black_list.ea[i].octet[3], android_ap_black_list.ea[i].octet[4], android_ap_black_list.ea[i].octet[5]);
 
 		/* deauth if there is associated station not in list */
-		assoc_maclist->count = 8;
+		assoc_maclist->count = 10;
 		wldev_ioctl(dev, WLC_GET_ASSOCLIST, assoc_maclist, 256, 0);
 		if (assoc_maclist->count) {
 			int j;
@@ -1427,7 +1499,6 @@ int wl_android_wifi_off(struct net_device *dev)
 	}
 
 	mutex_unlock(&wl_wifionoff_mutex);
-	bcm_mdelay(500);
 	return ret;
 }
 

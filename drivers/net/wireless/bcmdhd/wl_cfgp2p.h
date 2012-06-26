@@ -257,7 +257,6 @@ wl_cfgp2p_unregister_ndev(struct wl_priv *wl);
 #define SOCIAL_CHAN_2 6
 #define SOCIAL_CHAN_3 11
 #define SOCIAL_CHAN_CNT 3
-#define AF_PEER_SEARCH_CNT (SOCIAL_CHAN_CNT + 1)
 #define WL_P2P_WILDCARD_SSID "DIRECT-"
 #define WL_P2P_WILDCARD_SSID_LEN 7
 #define WL_P2P_INTERFACE_PREFIX "p2p"

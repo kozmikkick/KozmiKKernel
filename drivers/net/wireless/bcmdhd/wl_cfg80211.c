@@ -98,7 +98,7 @@
 static struct device *cfg80211_parent_dev = NULL;
 struct wl_priv *wlcfg_drv_priv = NULL;
 
-u32 wl_dbg_level = WL_DBG_ERR;
+u32 wl_dbg_level = WL_DBG_ERR ;
 
 #define MAC2STR(a) (a)[0], (a)[1], (a)[2], (a)[3], (a)[4], (a)[5]
 #define MACSTR "%02x:%02x:%02x:%02x:%02x:%02x"
@@ -394,6 +394,9 @@ static s32 wl_iscan_pending(struct wl_priv *wl);
 static s32 wl_iscan_inprogress(struct wl_priv *wl);
 static s32 wl_iscan_aborted(struct wl_priv *wl);
 
+#define MAX_SCAN_TIMEOUT_FAIL	10
+static s32 scan_timeout_num = 0;
+
 /*
  * find most significant bit set
  */
@@ -408,6 +411,7 @@ static int wl_rfkill_set(void *data, bool blocked);
 static wl_scan_params_t *wl_cfg80211_scan_alloc_params(int channel,
 	int nprobes, int *out_params_size);
 static void get_primary_mac(struct wl_priv *wl, struct ether_addr *mac);
+static int wl_dump_counters(struct net_device *dev);
 
 /*
  * Some external functions, TODO: move them to dhd_linux.h
@@ -5775,9 +5779,14 @@ static s32 wl_iscan_thread(void *data)
 static void wl_scan_timeout(unsigned long data)
 {
 	struct wl_priv *wl = (struct wl_priv *)data;
+	struct net_device *ndev = wl_to_prmry_ndev(wl);
 
 	if (wl->scan_request) {
 		WL_ERR(("timer expired\n"));
+		scan_timeout_num++;
+		if (scan_timeout_num > MAX_SCAN_TIMEOUT_FAIL)
+			wl_dump_counters(ndev);
+
 		if (wl->escan_on)
 			wl_notify_escan_complete(wl, wl->escan_info.ndev, true);
 		else
@@ -5921,7 +5930,7 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 
 		if (wl_get_drv_status_all(wl, SENDING_ACT_FRM)) {
 			p2p_dev_addr = wl_cfgp2p_retreive_p2p_dev_addr(bi, bi_length);
-			if (p2p_dev_addr && !memcmp(p2p_dev_addr,
+			if (p2p_dev_addr && wl->afx_hdl&& !memcmp(p2p_dev_addr,
 				wl->afx_hdl->pending_tx_dst_addr.octet, ETHER_ADDR_LEN)) {
 				s32 channel = CHSPEC_CHANNEL(dtohchanspec(bi->chanspec));
 				WL_DBG(("ACTION FRAME SCAN : Peer found, channel : %d\n", channel));
@@ -5989,6 +5998,8 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 			wl_notify_escan_complete(wl, ndev, false);
 			mutex_unlock(&wl->usr_sync);
 		}
+		/* reset scan_timeout num */
+		scan_timeout_num = 0;
 	}
 	else if (status == WLC_E_STATUS_ABORT) {
 		wl->escan_info.escan_state = WL_ESCAN_STATE_IDLE;
@@ -6007,6 +6018,8 @@ static s32 wl_escan_handler(struct wl_priv *wl,
 			wl_notify_escan_complete(wl, ndev, true);
 			mutex_unlock(&wl->usr_sync);
 		}
+		/* reset scan_timeout num */
+		scan_timeout_num = 0;
 	}
 	else {
 		WL_ERR(("unexpected Escan Event %d : abort\n", status));
@@ -7205,4 +7218,118 @@ static void get_primary_mac(struct wl_priv *wl, struct ether_addr *mac)
 	wldev_iovar_getbuf_bsscfg(wl_to_prmry_ndev(wl), "cur_etheraddr", NULL,
 		0, wl->ioctl_buf, WLC_IOCTL_MAXLEN, 0, &wl->ioctl_buf_sync);
 	memcpy(mac->octet, wl->ioctl_buf, ETHER_ADDR_LEN);
+}
+
+
+#define PRVAL(name)\
+	if (cnt.name != cnt_old.name)\
+		pbuf += sprintf(pbuf, "%s %d ", #name, dtoh32(cnt.name)-dtoh32(cnt_old.name))
+#define PRNL()		pbuf += sprintf(pbuf, "\n")
+#define PRD11VAL(name)\
+	if (cnt.name != cnt_old.name)\
+		pbuf += sprintf(pbuf, "d11_%s %d ", #name, dtoh32(cnt.name)-dtoh32(cnt_old.name))
+static wl_cnt_t cnt_old;
+static int wl_dump_counters(struct net_device *dev)
+{
+	wl_cnt_t cnt;
+	uint i;
+	char *pbuf;
+	char *counter_buf = NULL;
+	uint len;
+	char tmp;
+	int ret = 0;
+
+	counter_buf = kmalloc(1536, GFP_KERNEL);
+	if (!counter_buf) {
+		printf("no enough mem!\n");
+		return -ENOMEM;
+	}
+
+	pbuf = counter_buf;
+
+	ret = wldev_iovar_getbuf(dev, "counters", "", 0, pbuf, 1536, NULL);
+
+	if (ret) {
+		printf("get counters failed %d\n", ret);
+		return -1;
+	}
+
+	memcpy(&cnt, pbuf, sizeof(cnt));
+	cnt.version = dtoh16(cnt.version);
+	cnt.length = dtoh16(cnt.length);
+
+	/* PR49085: makes  wl compable with older driver */
+	if (cnt.version > WL_CNT_T_VERSION) {
+		printf("\tIncorrect version of counters struct: expected %d; got %d\n",
+			WL_CNT_T_VERSION, cnt.version);
+		return -1;
+	} else if (cnt.version != WL_CNT_T_VERSION) {
+		printf("\tIncorrect version of counters struct: expected %d; got %d\n",
+			WL_CNT_T_VERSION, cnt.version);
+		printf("\tDisplayed values may be incorrect\n");
+	}
+
+	/* summary stat counter line */
+	PRVAL(txframe); PRVAL(txbyte); PRVAL(txretrans); PRVAL(txerror);
+	PRVAL(rxframe); PRVAL(rxbyte); PRVAL(rxerror); PRNL();
+
+	PRVAL(txprshort); PRVAL(txdmawar); PRVAL(txnobuf); PRVAL(txnoassoc);
+	PRVAL(txchit); PRVAL(txcmiss); PRNL();
+
+	PRVAL(reset); PRVAL(txserr); PRVAL(txphyerr); PRVAL(txphycrs);
+	PRVAL(txfail); PRVAL(tbtt); PRNL();
+
+	PRD11VAL(txfrag); PRD11VAL(txmulti); PRD11VAL(txretry); PRD11VAL(txretrie); PRNL();
+	PRD11VAL(txrts); PRD11VAL(txnocts); PRD11VAL(txnoack); PRD11VAL(txfrmsnt); PRNL();
+
+	PRVAL(rxcrc); PRVAL(rxnobuf); PRVAL(rxnondata); PRVAL(rxbadds);
+	PRVAL(rxbadcm); PRVAL(rxdup); PRVAL(rxfragerr); PRNL();
+
+	PRVAL(rxrunt); PRVAL(rxgiant); PRVAL(rxnoscb); PRVAL(rxbadproto);
+	PRVAL(rxbadsrcmac); PRNL();
+
+	PRD11VAL(rxfrag); PRD11VAL(rxmulti); PRD11VAL(rxundec);	PRNL();
+
+	PRVAL(rxctl); PRVAL(rxbadda); PRVAL(rxfilter); PRNL();
+
+	pbuf += sprintf(pbuf, "rxuflo: ");
+	for (i = 0; i < NFIFO; i++)
+		pbuf += sprintf(pbuf, "%d ", dtoh32(cnt.rxuflo[i]));
+	PRNL();
+	PRVAL(txallfrm); PRVAL(txrtsfrm); PRVAL(txctsfrm); PRVAL(txackfrm); PRNL();
+	PRVAL(txdnlfrm); PRVAL(txbcnfrm); PRVAL(txtplunfl); PRVAL(txphyerr); PRNL();
+	pbuf += sprintf(pbuf, "txfunfl: ");
+	for (i = 0; i < NFIFO; i++)
+		pbuf += sprintf(pbuf, "%d ", dtoh32(cnt.txfunfl[i]));
+	PRNL();
+
+	if (cnt.version >= 4) {
+		/* per-rate receive counters */
+		PRVAL(rx1mbps); PRVAL(rx2mbps); PRVAL(rx5mbps5); PRNL();
+		PRVAL(rx6mbps); PRVAL(rx9mbps); PRVAL(rx11mbps); PRNL();
+		PRVAL(rx12mbps); PRVAL(rx18mbps); PRVAL(rx24mbps); PRNL();
+		PRVAL(rx36mbps); PRVAL(rx48mbps); PRVAL(rx54mbps); PRNL();
+	}
+
+	if (cnt.version >= 5) {
+		PRVAL(pktengrxducast); PRVAL(pktengrxdmcast); PRNL();
+	}
+
+	printf("\n\n==============================start collect diff counter==========================\n");
+	pbuf = counter_buf;
+	len = strlen(counter_buf);
+	for (i = 0; i < len; i++) {
+		if (counter_buf[i] == '\n') {
+			tmp = counter_buf[i+1];
+			counter_buf[i+1] = '\0';
+			printk(pbuf);
+			counter_buf[i+1] = tmp;
+			pbuf = &counter_buf[i+1];
+		}
+	}
+	printf("==============================end collect diff counter==========================\n");
+
+	memcpy(&cnt_old, &cnt, sizeof(wl_cnt_t));
+	kfree(counter_buf);
+	return 0;
 }
