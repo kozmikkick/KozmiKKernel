@@ -3289,7 +3289,7 @@ static struct tsens_platform_data hol_tsens_pdata  = {
 static struct platform_device msm_tsens_device = {
 	.name   = "tsens-tm",
 	.id = -1,
-};
+};*/
 
 #if defined(CONFIG_GPIO_SX150X) || defined(CONFIG_GPIO_SX150X_MODULE)
 enum {
@@ -3311,7 +3311,7 @@ static struct sx150x_platform_data sx150x_data[] __initdata = {
 		.io_pulldn_ena	 = 0x4060,
 		.io_open_drain_ena = 0x000c,
 		.io_polarity	   = 0,
-		.irq_summary	   = -1, /* see fixup_i2c_configs() */
+		.irq_summary	   = -1, 
 		.irq_base		  = GPIO_EXPANDER_IRQ_BASE,
 	},
 	[SX150X_DOCKING] = {
