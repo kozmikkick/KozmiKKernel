@@ -2717,7 +2717,7 @@ static void *bfq_init_queue(struct request_queue *q)
 		R_nonrot * T_nonrot : R_rot * T_rot;
 	bfqd->peak_rate = 1; /* to avoid divide-by-zero exceptions */
 
- 	return 0;
+ 	return bfqd;
  }
 static void bfq_slab_kill(void)
 {
